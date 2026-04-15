@@ -3,3 +3,5 @@ processed/
 output/
 _processed/
 *.pptx
+__pycache__/
+*.pyc

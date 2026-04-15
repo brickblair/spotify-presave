@@ -14,13 +14,33 @@ The cleaned images are then assembled into a widescreen `.pptx`, one image per s
 ## Setup
 
 ```
-pip install opencv-python-headless numpy Pillow python-pptx pillow-heif
+pip install opencv-python-headless numpy Pillow python-pptx pillow-heif flask
 ```
 
 `pillow-heif` is optional but recommended — without it, iPhone HEIC files
-are skipped. JPEG/PNG work either way.
+are skipped. JPEG/PNG work either way. `flask` is only needed for the
+phone-upload server (below).
 
-## Usage
+## Phone-upload mode (recommended for live capture)
+
+```
+python3 server.py                  # binds 0.0.0.0:8000
+python3 server.py --port 9000
+```
+
+On start it prints two URLs — use the LAN one from your phone's browser.
+From there:
+
+1. Tap **+ Add photos** → iOS photo picker opens → select slides → Upload.
+2. Repeat as you shoot more; the queue shows what's pending.
+3. Pick a layout (full-bleed or photo + notes box).
+4. Tap **Build deck** → the .pptx downloads to your phone.
+5. **Clear queue** resets for the next event.
+
+The same image pipeline runs server-side, so HEIC uploads, perspective
+correction, de-glare, and sharpening all Just Work.
+
+## CLI mode (for batches already on disk)
 
 ```
 python3 slides_to_pptx.py --input inbox/ --output output/deck.pptx
