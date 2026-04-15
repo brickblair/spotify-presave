@@ -14,8 +14,11 @@ The cleaned images are then assembled into a widescreen `.pptx`, one image per s
 ## Setup
 
 ```
-pip install opencv-python-headless numpy Pillow python-pptx
+pip install opencv-python-headless numpy Pillow python-pptx pillow-heif
 ```
+
+`pillow-heif` is optional but recommended — without it, iPhone HEIC files
+are skipped. JPEG/PNG work either way.
 
 ## Usage
 
@@ -33,6 +36,7 @@ Flags:
 | `--order` | `name` | `name` or `mtime` |
 | `--target-width` | `1920` | output image width in pixels |
 | `--no-warp` | off | skip perspective correction (use if the detector mis-fires) |
+| `--layout` | `image` | `image` (full-bleed photo) or `caption` (photo + editable notes box) |
 
 ## Live-capture workflow
 
@@ -42,6 +46,6 @@ Flags:
 
 ## Known limits
 
-- **HEIC**: Pillow needs `pillow-heif` installed to read HEIC directly. If that's not available, export as JPEG on the phone first (Settings → Camera → Formats → Most Compatible).
 - **Glare**: the inpaint tool handles small specular hotspots; large glare washes are not recoverable from pixels alone.
 - **Slide detection**: requires the slide to occupy at least ~15% of the frame and have visible edges. If the detector misses, use `--no-warp` and the raw (EXIF-rotated) frame is used.
+- **HEIC**: needs `pillow-heif`; otherwise export JPEG on the phone (Settings → Camera → Formats → Most Compatible).

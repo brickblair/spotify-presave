@@ -14,6 +14,7 @@ Optional:
     --order name|mtime       # slide ordering (default: name)
     --target-width 1920      # output image width in pixels
     --no-warp                # skip perspective correction
+    --layout image|caption   # slide layout (default: image)
 """
 
 from __future__ import annotations
@@ -26,7 +27,13 @@ import cv2
 import numpy as np
 from PIL import Image, ImageOps
 from pptx import Presentation
-from pptx.util import Emu
+from pptx.util import Emu, Pt
+
+try:
+    import pillow_heif
+    pillow_heif.register_heif_opener()
+except ImportError:
+    pass  # HEIC support is optional; JPEG/PNG still work.
 
 SUPPORTED_EXT = {".jpg", ".jpeg", ".png", ".heic", ".heif", ".tif", ".tiff", ".webp"}
 
@@ -164,7 +171,25 @@ def process_image(bgr: np.ndarray, warp: bool, target_width: int) -> np.ndarray:
 
 # ---------- PowerPoint assembly ----------
 
-def build_pptx(image_paths: list[Path], out_path: Path) -> None:
+def _fit_picture(slide, img_path: Path, box_left: int, box_top: int,
+                 box_w: int, box_h: int) -> None:
+    """Add the image centered inside the given box, preserving aspect ratio."""
+    with Image.open(img_path) as pil:
+        iw, ih = pil.size
+    img_ratio = iw / ih
+    box_ratio = box_w / box_h
+    if img_ratio >= box_ratio:
+        width = box_w
+        height = int(box_w / img_ratio)
+    else:
+        height = box_h
+        width = int(box_h * img_ratio)
+    left = box_left + (box_w - width) // 2
+    top = box_top + (box_h - height) // 2
+    slide.shapes.add_picture(str(img_path), left, top, width=width, height=height)
+
+
+def build_pptx(image_paths: list[Path], out_path: Path, layout: str = "image") -> None:
     prs = Presentation()
     # 16:9 at 13.333in x 7.5in (PowerPoint widescreen default).
     prs.slide_width = Emu(12192000)
@@ -172,24 +197,30 @@ def build_pptx(image_paths: list[Path], out_path: Path) -> None:
     blank = prs.slide_layouts[6]
 
     sw, sh = prs.slide_width, prs.slide_height
-    sw_ratio = sw / sh
+
+    # For the captioned layout, reserve the bottom ~22% of the slide for notes.
+    caption_h = int(sh * 0.22) if layout == "caption" else 0
+    pad = Emu(228600) if layout == "caption" else 0  # 0.25in gutter
 
     for img in image_paths:
         slide = prs.slides.add_slide(blank)
-        with Image.open(img) as pil:
-            iw, ih = pil.size
-        img_ratio = iw / ih
+        img_box_h = sh - caption_h - (pad if caption_h else 0)
+        _fit_picture(slide, img, 0, 0, sw, img_box_h)
 
-        # Fit image inside slide, letterbox if needed.
-        if img_ratio >= sw_ratio:
-            width = sw
-            height = int(sw / img_ratio)
-        else:
-            height = sh
-            width = int(sh * img_ratio)
-        left = int((sw - width) / 2)
-        top = int((sh - height) / 2)
-        slide.shapes.add_picture(str(img), left, top, width=width, height=height)
+        if layout == "caption":
+            tb = slide.shapes.add_textbox(
+                Emu(457200),                       # 0.5in left margin
+                img_box_h + pad,                   # below the image
+                sw - Emu(914400),                  # 1in total side margins
+                caption_h - pad,
+            )
+            tf = tb.text_frame
+            tf.word_wrap = True
+            p = tf.paragraphs[0]
+            p.text = "Notes…"
+            run = p.runs[0]
+            run.font.size = Pt(18)
+            run.font.italic = True
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     prs.save(out_path)
@@ -214,6 +245,8 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--order", choices=["name", "mtime"], default="name")
     ap.add_argument("--target-width", type=int, default=1920)
     ap.add_argument("--no-warp", action="store_true", help="Skip perspective correction")
+    ap.add_argument("--layout", choices=["image", "caption"], default="image",
+                    help="'image' = full-bleed photo; 'caption' = photo + editable notes box")
     args = ap.parse_args(argv)
 
     if not args.input.is_dir():
@@ -244,7 +277,7 @@ def main(argv: list[str]) -> int:
         print("error: no images processed successfully", file=sys.stderr)
         return 1
 
-    build_pptx(cleaned_paths, args.output)
+    build_pptx(cleaned_paths, args.output, layout=args.layout)
     print(f"wrote {args.output} with {len(cleaned_paths)} slide(s)")
     return 0
 
