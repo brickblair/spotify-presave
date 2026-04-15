@@ -14,11 +14,12 @@ The cleaned images are then assembled into a widescreen `.pptx`, one image per s
 ## Setup
 
 ```
-pip install opencv-python-headless numpy Pillow python-pptx pillow-heif flask
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
 `pillow-heif` is optional but recommended — without it, iPhone HEIC files
-are skipped. JPEG/PNG work either way. `flask` is only needed for the
+are skipped. JPEG/PNG work either way. `Flask` is only needed for the
 phone-upload server (below).
 
 ## Phone-upload mode (recommended for live capture)
