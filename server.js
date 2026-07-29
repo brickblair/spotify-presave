@@ -16,6 +16,7 @@ const adminRoutes = require("./server/routes/admin");
 const songRoutes = require("./server/routes/song");
 const artistRoutes = require("./server/routes/artist");
 const spotifyRoutes = require("./server/routes/spotify");
+const inboundEmailRoutes = require("./server/routes/inboundEmail");
 
 var app = express(); // create an instance of express
 
@@ -69,6 +70,7 @@ app.use(adminRoutes);
 app.use(songRoutes);
 app.use(artistRoutes);
 app.use(spotifyRoutes);
+app.use(inboundEmailRoutes);
 
 // establish a connection to mongodb database
 mongoose.connect('mongodb://localhost:27017/spotify-presave', {useNewUrlParser : true}, (err, res) => {
